@@ -1,0 +1,10 @@
+# codex for building the frontend of the application
+.agents/
+.codex/
+
+# environments and secrets
+.env
+.venv
+
+# misc
+__pycache__/

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account | FastAPI to-do</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+  </head>
+  <body>
+    <input class="theme-toggle" id="theme-toggle" type="checkbox" aria-label="Toggle dark mode">
+    <div class="page-shell">
+      <header class="navbar">
+        <a class="brand" href="/"><span class="brand-mark">✓</span><span>FastAPI to-do</span></a>
+        <nav class="nav-links" aria-label="Primary navigation">
+          <a href="/">Home</a>
+          <a class="active" href="/account">Account</a>
+          <label class="theme-switch" for="theme-toggle" title="Switch theme"><span class="sun">☀</span><span class="switch-track"><span class="switch-thumb"></span></span><span class="moon">☾</span><span class="sr-only">Toggle dark mode</span></label>
+        </nav>
+      </header>
+
+      <main class="account-main">
+        <section class="account-heading" aria-labelledby="account-title">
+          <p class="eyebrow">Personal settings</p>
+          <h1 id="account-title">Your account</h1>
+          <p class="subtitle">Manage your profile and account preferences.</p>
+        </section>
+
+        <div class="account-layout">
+          <aside class="account-summary">
+            <img class="account-avatar" src="/static/profile_picture/default.jpg" alt="Your profile picture">
+            <h2>Alex Morgan</h2>
+            <p>alex@example.com</p>
+            <a class="account-back" href="/">Back to your to-dos</a>
+          </aside>
+
+          <div class="account-panels">
+            <section class="settings-card" aria-labelledby="profile-picture-title">
+              <div class="settings-card-heading"><div><h2 id="profile-picture-title">Profile picture</h2><p>Use a square JPG or PNG under 5 MB.</p></div></div>
+              <form class="avatar-form" action="/account/profile-picture" method="post" enctype="multipart/form-data">
+                <label class="file-input"><span>Choose an image</span><input type="file" name="profile_picture" accept="image/png,image/jpeg"></label>
+                <button class="secondary-button" type="submit">Upload picture</button>
+              </form>
+            </section>
+
+            <section class="settings-card" aria-labelledby="profile-details-title">
+              <div class="settings-card-heading"><div><h2 id="profile-details-title">Profile details</h2><p>Update the name shown in your account.</p></div></div>
+              <form class="settings-form" action="/account/username" method="post">
+                <label for="username">Username</label>
+                <div class="form-row"><input id="username" name="username" type="text" value="Alex Morgan" autocomplete="name" required><button class="secondary-button" type="submit">Save username</button></div>
+              </form>
+            </section>
+
+            <section class="settings-card" aria-labelledby="email-title">
+              <div class="settings-card-heading"><div><h2 id="email-title">Email address</h2><p>We will use this address for account notifications.</p></div></div>
+              <form class="settings-form" action="/account/email" method="post">
+                <label for="email">Email</label>
+                <div class="form-row"><input id="email" name="email" type="email" value="alex@example.com" autocomplete="email" required><button class="secondary-button" type="submit">Change email</button></div>
+              </form>
+            </section>
+
+            <section class="settings-card" aria-labelledby="password-title">
+              <div class="settings-card-heading"><div><h2 id="password-title">Password</h2><p>Choose a strong password you do not reuse elsewhere.</p></div></div>
+              <form class="settings-form password-grid" action="/account/password" method="post">
+                <label for="current-password">Current password</label><input id="current-password" name="current_password" type="password" autocomplete="current-password" required>
+                <label for="new-password">New password</label><input id="new-password" name="new_password" type="password" autocomplete="new-password" minlength="8" required>
+                <label for="confirm-password">Confirm new password</label><input id="confirm-password" name="confirm_password" type="password" autocomplete="new-password" minlength="8" required>
+                <button class="secondary-button password-submit" type="submit">Reset password</button>
+              </form>
+            </section>
+
+            <section class="settings-card account-actions" aria-labelledby="session-title">
+              <div class="settings-card-heading"><div><h2 id="session-title">Session</h2><p>Sign out on this device when you are finished.</p></div></div>
+              <form action="/logout" method="post"><button class="secondary-button" type="submit">Log out</button></form>
+            </section>
+
+            <section class="settings-card danger-card" aria-labelledby="delete-title">
+              <div class="settings-card-heading"><div><h2 id="delete-title">Delete account</h2><p>This permanently removes your account and all of its to-dos.</p></div></div>
+              <details class="delete-confirmation">
+                <summary>Delete my account</summary>
+                <div><p>Are you sure? This action cannot be undone.</p><form action="/account/delete" method="post"><button class="danger-button" type="submit">Yes, delete my account</button></form></div>
+              </details>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
+  </body>
+</html>
