@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     # Development defaults let the frontend run before PostgreSQL and S3 are
     # configured. Override these values through .env in deployed environments.
-    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/t0_d0"
+    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5434/t0_d0"
 
     secret_key: SecretStr = SecretStr("development-only-change-me")
     algorithm: str = "HS256"

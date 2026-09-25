@@ -14,18 +14,19 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.status import HTTP_503_SERVICE_UNAVAILABLE
 from starlette.types import ExceptionHandler
 
 import models
 from routers import todos
-# from config import settings
-# from database import engine, get_db
+from config import settings
+from database import engine, get_db
 # from routers import posts, users
 
-# @asynccontextmanager
-# async def lifespan(_app: FastAPI):
-#     yield
-#     await engine.dispose()
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    yield
+    await engine.dispose()
 
 
 dummy_users = [
@@ -56,8 +57,8 @@ dummy_users = [
 ]
 
 
-# app = FastAPI(lifespan=lifespan)
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 templates = Jinja2Templates(directory="templates")
@@ -80,9 +81,13 @@ async def add_security_headers(request: Request, call_next):
 
     return response
 
-# @app.get("/health")
-# async def health_check(db: Annotated[AsyncSession, Depends(get_db)]):
-#     pass
+@app.get("/health")
+async def health_check(db: Annotated[AsyncSession, Depends(get_db)]):
+    try:
+        await db.execute(text("SELECT 1"))
+        return JSONResponse(status_code=200, content="DB connection successful")
+    except:
+        raise HTTPException(status_code=HTTP_503_SERVICE_UNAVAILABLE, detail="DB Services are unavailable as of now, please try again later.")
 
 @app.get("/")
 @app.get("/todos")
