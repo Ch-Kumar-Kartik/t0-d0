@@ -12,7 +12,9 @@ class Settings(BaseSettings):
     # configured. Override these values through .env in deployed environments.
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5434/t0_d0"
 
-    secret_key: SecretStr = SecretStr("development-only-change-me")
+    secret_key: SecretStr = SecretStr(
+        "development-only-change-me-32-bytes-minimum"
+    )
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
 

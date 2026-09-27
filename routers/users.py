@@ -1,98 +1,160 @@
-from datetime import timedelta, UTC, datetime
+from datetime import timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
-from PIL import UnidentifiedImageError
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-from starlette.concurrency import run_in_threadpool
-
-from sqlalchemy import delete as sql_delete
 
 import models
-# from auth import (
-#     CurrentUser,
-#     create_access_token,
-#     hash_password,
-#     verify_password,
-#     generate_reset_token,
-#     hash_reset_token
-# )
-# from config import settings
-# from database import get_db
-# from email_utils import send_password_reset_email
-# from image_utils import delete_profile_image, process_profile_image, upload_profile_image
-# from schemas import (
-#     PaginatedPostsResponse,
-#     PostResponse,
-#     Token,
-#     UserCreate,
-#     UserPrivate,
-#     UserPublic,
-#     UserUpdate,
-#     ChangePasswordRequest,
-#     ForgotPasswordRequest,
-#     ResetPasswordRequest
-# )
+from auth import CurrentUser, create_access_token, hash_password, verify_password
+from config import settings
+from database import get_db
+from schemas import Token, UserCreate, UserPrivate, UserUpdate
 
-from botocore.exceptions import ClientError
 
 router = APIRouter()
+DbSession = Annotated[AsyncSession, Depends(get_db)]
 
 
-@router.post("")
-async def create_user():
-    pass
+@router.post("", response_model=UserPrivate, status_code=status.HTTP_201_CREATED)
+async def create_user(user: UserCreate, db: DbSession) -> models.User:
+    username = user.username.strip()
+    email = user.email.lower()
+
+    existing_user = await db.scalar(
+        select(models.User).where(
+            or_(
+                func.lower(models.User.username) == username.lower(),
+                func.lower(models.User.email) == email,
+            )
+        )
+    )
+    if existing_user:
+        detail = (
+            "Username already exists"
+            if existing_user.username.lower() == username.lower()
+            else "Email already exists"
+        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
+
+    new_user = models.User(
+        username=username,
+        email=email,
+        password_hash=hash_password(user.password),
+    )
+    db.add(new_user)
+
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Username or email already exists",
+        )
+
+    await db.refresh(new_user)
+    return new_user
 
 
-@router.post("/token")
-async def login_for_access_token():
-    pass
+@router.post("/token", response_model=Token)
+async def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    db: DbSession,
+) -> Token:
+    user = await db.scalar(
+        select(models.User).where(
+            func.lower(models.User.email) == form_data.username.lower()
+        )
+    )
+
+    if not user or not verify_password(form_data.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    token = create_access_token(
+        {"sub": str(user.id)},
+        expires_delta=timedelta(minutes=settings.access_token_expire_minutes),
+    )
+    return Token(access_token=token)
 
 
-@router.get("/me")
-async def get_current_user():
-    pass
+@router.get("/me", response_model=UserPrivate)
+async def read_current_user(user: CurrentUser) -> models.User:
+    return user
 
 
-@router.post("/forgot-password")
-async def forgot_password():
-    pass
+@router.post("/logout")
+async def logout() -> dict[str, str]:
+    """Confirm logout for a stateless bearer-token client.
 
-@router.post("/reset-password")
-async def reset_password():
-    pass
-
-@router.patch("/me/password")
-async def change_password():
-    pass
-
-@router.get("/{user_id}")
-async def get_user():
-    pass
+    The browser removes the token from local storage. Server-side token
+    revocation can be added later if immediate invalidation is required.
+    """
+    return {"detail": "Logged out"}
 
 
-@router.get("/{user_id}/posts")
-async def get_user_posts():
-    pass
+@router.patch("/me", response_model=UserPrivate)
+async def update_current_user(
+    updates: UserUpdate,
+    user: CurrentUser,
+    db: DbSession,
+) -> models.User:
+    changes = updates.model_dump(exclude_unset=True, exclude_none=True)
+    if not changes:
+        return user
 
-@router.patch("/{user_id}")
-async def update_user():
-    pass
+    if "username" in changes:
+        changes["username"] = changes["username"].strip()
+        existing_user = await db.scalar(
+            select(models.User).where(
+                func.lower(models.User.username) == changes["username"].lower(),
+                models.User.id != user.id,
+            )
+        )
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Username already exists",
+            )
+
+    if "email" in changes:
+        changes["email"] = changes["email"].lower()
+        existing_user = await db.scalar(
+            select(models.User).where(
+                func.lower(models.User.email) == changes["email"],
+                models.User.id != user.id,
+            )
+        )
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already exists",
+            )
+
+    for field, value in changes.items():
+        setattr(user, field, value)
+
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Username or email already exists",
+        )
+
+    await db.refresh(user)
+    return user
 
 
-@router.delete("/{user_id}")
-async def delete_user():
-    pass
-
-
-@router.patch("/{user_id}/picture")
-async def upload_profile_picture():
-    pass
-
-
-@router.delete("/{user_id}/picture")
-async def delete_user_picture():
-    pass
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_current_user(user: CurrentUser, db: DbSession) -> Response:
+    await db.delete(user)
+    await db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
