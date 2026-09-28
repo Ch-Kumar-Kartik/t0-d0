@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log in | FastAPI to-do</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+  </head>
+  <body>
+    <input class="theme-toggle" id="theme-toggle" type="checkbox" aria-label="Toggle dark mode">
+    <div class="page-shell">
+      <header class="navbar">
+        <a class="brand" href="/"><span class="brand-mark">✓</span><span>FastAPI to-do</span></a>
+        <nav class="nav-links" aria-label="Primary navigation">
+          <a href="/">Home</a>
+          <a class="register-link" href="/register">Register</a>
+          <label class="theme-switch" for="theme-toggle" title="Switch theme"><span class="sun">☀</span><span class="switch-track"><span class="switch-thumb"></span></span><span class="moon">☾</span><span class="sr-only">Toggle dark mode</span></label>
+        </nav>
+      </header>
+
+      <main class="auth-main">
+        <section class="auth-card" aria-labelledby="login-title">
+          <p class="eyebrow">Welcome back</p>
+          <h1 id="login-title">Log in to your account</h1>
+          <p class="subtitle">Pick up right where you left off.</p>
+
+          <form id="login-form" class="auth-form">
+            <label for="email">Email address</label>
+            <input id="email" name="email" type="email" autocomplete="email" required>
+
+            <label for="password">Password</label>
+            <input id="password" name="password" type="password" autocomplete="current-password" minlength="8" required>
+
+            <p id="form-feedback" class="form-feedback" role="alert" aria-live="polite"></p>
+            <button class="auth-submit" type="submit">Log in</button>
+          </form>
+
+          <p class="auth-alternate">New to FastAPI to-do? <a href="/register">Create an account</a></p>
+        </section>
+      </main>
+    </div>
+
+    <script type="module">
+      import { login } from "/static/js/auth.js";
+
+      const form = document.getElementById("login-form");
+      const feedback = document.getElementById("form-feedback");
+      const submitButton = form.querySelector("button[type=submit]");
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        feedback.textContent = "";
+        submitButton.disabled = true;
+        submitButton.textContent = "Logging in...";
+
+        try {
+          await login(form.email.value, form.password.value);
+          window.location.assign("/");
+        } catch (error) {
+          feedback.textContent = error.message;
+        } finally {
+          submitButton.disabled = false;
+          submitButton.textContent = "Log in";
+        }
+      });
+    </script>
+  </body>
+</html>

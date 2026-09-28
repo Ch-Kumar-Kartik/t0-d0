@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     )
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
+    environment: str = "development"
 
 
     s3_bucket_name: str = "development-bucket"

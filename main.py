@@ -9,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import engine, get_db
-from routers import users
+from routers import users, todos
 
 
 @asynccontextmanager
@@ -21,6 +21,7 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="FastAPI to-do", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(users.router, prefix="/api/users", tags=["users"])
+app.include_router(todos.router, prefix="/api/todos", tags=["todos"])
 
 templates = Jinja2Templates(directory="templates")
 
