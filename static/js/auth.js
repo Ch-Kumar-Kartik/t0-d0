@@ -94,10 +94,15 @@ export async function getCurrentUser() {
   return currentUserRequest;
 }
 
-export function logout() {
+export async function logout() {
+  try {
+    await apiRequest("/api/users/logout", { method: "POST" });
+  } catch {
+    // Clearing this browser's token is sufficient for a stateless JWT logout.
+  }
   clearToken();
   currentUser = null;
-  window.location.href = "/";
+  window.location.assign("/login");
 }
 
 export function clearUserCache() {

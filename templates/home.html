@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FastAPI to-do</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/styles.css?v=2">
   </head>
   <body>
     <input class="theme-toggle" id="theme-toggle" type="checkbox" aria-label="Toggle dark mode">
@@ -13,34 +13,37 @@
         <a class="brand" href="/"><span class="brand-mark">✓</span><span>FastAPI to-do</span></a>
         <nav class="nav-links" aria-label="Primary navigation">
           <a class="active" href="/">Home</a>
-          <a href="/login">Login</a>
-          <a class="register-link" href="/register">Register</a>
+          <a id="login-link" href="/login">Login</a>
+          <a id="register-link" class="register-link" href="/register">Register</a>
           <a class="profile-link" href="/account" aria-label="Open your account">
-            <img class="profile-avatar" src="/static/profile_picture/default.jpg" alt="Your profile picture">
+            <img id="profile-avatar" class="profile-avatar" src="/static/profile_picture/default.jpg" alt="Your profile picture">
           </a>
           <label class="theme-switch" for="theme-toggle" title="Switch theme"><span class="sun">☀</span><span class="switch-track"><span class="switch-thumb"></span></span><span class="moon">☾</span><span class="sr-only">Toggle dark mode</span></label>
         </nav>
       </header>
       <main>
         <section class="hero" aria-labelledby="page-title">
-          <div><p class="eyebrow">Tuesday, September 21</p><h1 id="page-title">Your to-dos</h1><p class="subtitle">A little progress every day adds up to big things.</p></div>
-          <button class="add-button" type="button"><span>+</span> Add task</button>
+          <div><p id="current-date" class="eyebrow"></p><h1 id="page-title">Your to-dos</h1><p class="subtitle">A little progress every day adds up to big things.</p></div>
+          <button id="show-create-form" class="add-button" type="button"><span>+</span> Add task</button>
         </section>
-        <section class="progress-card" aria-label="Daily progress">
-          <div class="progress-copy"><span class="progress-icon">✦</span><div><strong>Keep it going!</strong><p>2 of 5 tasks completed today.</p></div></div>
-          <div class="progress-meter" aria-label="40 percent complete"><span></span></div><span class="progress-value">40%</span>
+        <form id="create-todo-form" class="todo-form" hidden>
+          <label for="todo-title">Task title</label>
+          <input id="todo-title" name="title" type="text" maxlength="255" required>
+          <label for="todo-description">Description <span>(optional)</span></label>
+          <textarea id="todo-description" name="description" rows="2"></textarea>
+          <div class="todo-form-actions"><button id="cancel-create" class="secondary-button" type="button">Cancel</button><button class="add-button" type="submit">Create task</button></div>
+        </form>
+        <p id="todo-feedback" class="todo-feedback" role="alert" aria-live="polite"></p>
+        <section class="progress-card" aria-label="Todo progress">
+          <div class="progress-copy"><span class="progress-icon">✦</span><div><strong>Keep it going!</strong><p id="progress-copy">Loading your tasks...</p></div></div>
+          <div id="progress-meter" class="progress-meter" aria-label="0 percent complete"><span></span></div><span id="progress-value" class="progress-value">0%</span>
         </section>
         <section aria-labelledby="today-title">
-          <div class="section-heading"><h2 id="today-title">Today <span>5</span></h2><button type="button">Clear completed</button></div>
-          <ul class="task-list">
-            <li class="task completed"><label><input type="checkbox" checked><span class="checkmark"></span><span>Review project requirements</span></label><span class="task-tag work">Work</span><button class="more" type="button">•••</button></li>
-            <li class="task"><label><input type="checkbox"><span class="checkmark"></span><span>Build the FastAPI endpoints</span></label><span class="task-tag work">Work</span><button class="more" type="button">•••</button></li>
-            <li class="task"><label><input type="checkbox"><span class="checkmark"></span><span>Pick up groceries</span></label><span class="task-tag personal">Personal</span><button class="more" type="button">•••</button></li>
-            <li class="task completed"><label><input type="checkbox" checked><span class="checkmark"></span><span>Reply to Maya's email</span></label><span class="task-tag work">Work</span><button class="more" type="button">•••</button></li>
-            <li class="task"><label><input type="checkbox"><span class="checkmark"></span><span>Read for 30 minutes</span></label><span class="task-tag wellbeing">Wellbeing</span><button class="more" type="button">•••</button></li>
-          </ul>
+          <div class="section-heading"><h2 id="today-title">Your tasks <span id="todo-count">0</span></h2><button id="clear-completed" type="button">Clear completed</button></div>
+          <ul id="task-list" class="task-list" aria-live="polite"></ul>
         </section>
       </main>
     </div>
+    <script type="module" src="/static/js/todos.js"></script>
   </body>
 </html>

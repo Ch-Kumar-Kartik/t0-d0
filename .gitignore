@@ -6,6 +6,10 @@
 .env
 .venv
 
+# static
+static/uploads/profile_pictures/*
+!static/uploads/profile_pictures/.gitkeep
+
 # misc
 __pycache__/
 commands.txt

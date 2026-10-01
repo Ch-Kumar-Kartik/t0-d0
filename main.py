@@ -84,6 +84,24 @@ async def register_page(request: Request):
     )
 
 
+@app.get("/forgot-password")
+async def forgot_password_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="forgot_password.html",
+        context={},
+    )
+
+
+@app.get("/reset-password")
+async def reset_password_page(request: Request):
+    return templates.TemplateResponse(
+        request=request,
+        name="reset_password.html",
+        context={},
+    )
+
+
 @app.get("/account")
 async def account_page(request: Request):
     return templates.TemplateResponse(

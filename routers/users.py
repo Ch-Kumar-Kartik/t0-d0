@@ -2,11 +2,19 @@ import logging
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import delete, func, or_, select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+from io import BytesIO
+from pathlib import Path
+from uuid import uuid4
+
+from fastapi import File, UploadFile, status
+from PIL import Image, UnidentifiedImageError
+from starlette.status import HTTP_413_CONTENT_TOO_LARGE
+
 
 import models
 from auth import (
@@ -21,6 +29,7 @@ from config import settings
 from database import get_db
 from schemas import (
     ChangePasswordRequest,
+    DeleteAccountRequest,
     ForgotPasswordRequest,
     ResetPasswordRequest,
     Token,
@@ -208,6 +217,7 @@ async def update_current_user(
     db: DbSession,
 ) -> models.User:
     changes = updates.model_dump(exclude_unset=True, exclude_none=True)
+    current_password = changes.pop("current_password", None)
     if not changes:
         return user
 
@@ -226,6 +236,13 @@ async def update_current_user(
             )
 
     if "email" in changes:
+        if not current_password or not verify_password(
+            current_password, user.password_hash
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is required to change your email",
+            )
         changes["email"] = changes["email"].lower()
         existing_user = await db.scalar(
             select(models.User).where(
@@ -256,7 +273,89 @@ async def update_current_user(
 
 
 @router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_current_user(user: CurrentUser, db: DbSession) -> Response:
+async def delete_current_user(
+    payload: DeleteAccountRequest,
+    user: CurrentUser,
+    db: DbSession,
+) -> Response:
+    if not verify_password(payload.current_password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+
     await db.delete(user)
     await db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024
+
+ALLOWED_IMAGE_TYPES = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+}
+
+PROFILE_PICTURES_DIR = (
+    Path(__file__).resolve().parents[1]
+    / "static"
+    / "uploads"
+    / "profile_pictures"
+)
+
+
+@router.post("/me/profile-picture", response_model=UserPrivate)
+async def upload_profile_pic(
+    profile_picture: Annotated[UploadFile, File(...)],
+    user: CurrentUser,
+    db: DbSession,
+) -> models.User:
+    extension = ALLOWED_IMAGE_TYPES.get(profile_picture.content_type)
+    if not extension:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Only JPG and PNG images are supported",
+        )
+
+    image_bytes = await profile_picture.read()
+    await profile_picture.close()
+
+    if len(image_bytes) > MAX_PROFILE_IMAGE_SIZE:
+        raise HTTPException(
+            status_code=HTTP_413_CONTENT_TOO_LARGE,
+            detail="Image must be 5 MB or smaller",
+        )
+
+    try:
+        with Image.open(BytesIO(image_bytes)) as image:
+            image.verify()
+    except (UnidentifiedImageError, OSError, SyntaxError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is not a valid image",
+        )
+
+    PROFILE_PICTURES_DIR.mkdir(parents=True, exist_ok=True)
+
+    old_image_url = user.profile_image_url
+    filename = f"{uuid4()}{extension}"
+    destination = PROFILE_PICTURES_DIR / filename
+    destination.write_bytes(image_bytes)
+
+    user.profile_image_url = f"/static/uploads/profile_pictures/{filename}"
+
+    try:
+        await db.commit()
+    except SQLAlchemyError:
+        await db.rollback()
+        destination.unlink(missing_ok=True)
+        raise
+
+    await db.refresh(user)
+
+    uploads_url_prefix = "/static/uploads/profile_pictures/"
+    if old_image_url.startswith(uploads_url_prefix):
+        old_image_path = PROFILE_PICTURES_DIR / Path(old_image_url).name
+        if old_image_path != destination:
+            old_image_path.unlink(missing_ok=True)
+
+    return user
